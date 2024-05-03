@@ -1,5 +1,6 @@
 from collections import defaultdict
 import asyncio
+import threading
 import cv2
 import os
 import sys, getopt
@@ -8,15 +9,91 @@ import time
 import datetime
 from edge_impulse_linux.image import ImageImpulseRunner
 import justpy as jp
+ 
+# Define the top of the image and the number of columns
+TOP_Y = 20 # was 80 # was originially 100
+NUM_COLS = 20
+# Define the factor of the width/height which determines the threshold
+# for detection of the object's movement between frames:
+DETECT_FACTOR = 5 # was 1.5
 
+# Initialize variables
+count = [0] * NUM_COLS
+countsum = 0
+previous_blobs = [[] for _ in range(NUM_COLS)]
+label_counts = defaultdict(int)
+ 
 wp = jp.WebPage(delete_flag=False)
-clock_div = jp.Span(text='Loading...', classes='text-5xl m-1 p-1 bg-gray-300 font-mono', a=wp)
+
+# TODO: logging and influx telemetry
+
+body_div = jp.Div( a=wp, style='background: url(bg.jpg) no-repeat center center fixed;' )
+# Alternate ways: https://css-tricks.com/perfect-full-page-background-image/
+
+# Positions of rows and columns of divs
+t1 = "100px"
+t2 = "300px"
+t3 = "500px"
+l1 = "100px"
+l2 = "500px"
+
+common_styles = "position: fixed; width: 200px; height: 100px; border: 3px solid #73AD21;"
+font = "font-family: 'Gill Sans Extrabold', sans-serif; font-size:2vw;"
+# TODO: calculate div's percerntage of viewport width based on pixels
+
+beet_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'{common_styles} top: {t1}; left: {l1};  {font}',
+)
+squash_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'top: {t1}; left: {l2}; {common_styles} {font}',
+)
+corn_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'top: {t2}; left: {l1}; {common_styles} {font}',
+)
+sweet_potato_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'top: {t2}; left: {l2}; {common_styles} {font}',
+)
+soybean_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'top: {t3}; left: {l1}; {common_styles} {font}',
+)
+total_div = jp.Span(
+        text='Loading...',
+        classes='',
+        a=wp,
+        style=f'top: {t3}; left: {l2}; {common_styles} {font}',
+)
+
 
 async def clock_counter():
     while True:
-        clock_div.text = time.strftime("%a, %d %b %Y, %H:%M:%S", time.localtime())
+#        for i in range(3):
+#            d = jp.Div(a=wp, classes='m-2')
+#            for j in range(2):
+#                jp.Span(text=f'Span #{j+1} in Div #{i+1}', a=d, classes='text-white bg-blue-700 hover:bg-blue-200 ml-1 p-1')
+        beet_div.text = "Beets: " + str(label_counts["Beet"])
+        squash_div.text = "Squash: " + str(label_counts["Squash"])
+        corn_div.text = "Corn: " + str(label_counts["Corn"])
+        sweet_potato_div.text = "Sweet Potatoes: " + str(label_counts["Sweet Potatoes"])
+        soybean_div.text = "Soybeans: " + str(label_counts["Soybean"])
+        total_div.text = "Total Produce: " + str(label_counts["Total"])
         jp.run_task(wp.update())
         await asyncio.sleep(1)
+
 
 async def clock_init():
     jp.run_task(clock_counter())
@@ -24,7 +101,11 @@ async def clock_init():
 async def clock_test():
     return wp
 
-jp.justpy(clock_test, startup=clock_init)
+html_server = threading.Thread(target=jp.justpy, args=(clock_test,), kwargs={"startup":clock_init, "host":"0.0.0.0",}, daemon=True)
+html_server.start()
+print("HTML Server Started")
+
+#jp.justpy(clock_test, startup=clock_init)
 
 modelfile = '/home/exhibits/cropcounter/modelfile.eim'
 # If you have multiple webcams, replace None with the camera port you desire, get_webcams() can help find this
@@ -96,21 +177,9 @@ with ImageImpulseRunner(modelfile) as runner:
             raise Exception("Couldn't initialize selected camera.")
 
         next_frame = 0 # limit to ~10 fps here
-        
-        # Define the top of the image and the number of columns
-        TOP_Y = 20 # was 80 # was originially 100
-        NUM_COLS = 20
+       
+       
         COL_WIDTH = int(w / NUM_COLS)
-        # Define the factor of the width/height which determines the threshold
-        # for detection of the object's movement between frames:
-        DETECT_FACTOR = 5 # was 1.5
-
-        # Initialize variables
-        count = [0] * NUM_COLS
-        countsum = 0
-        previous_blobs = [[] for _ in range(NUM_COLS)]
-        label_counts = defaultdict(int)
-        
 
         for res, img in runner.classifier(videoCaptureDeviceId):
             # Initialize list of current blobs
