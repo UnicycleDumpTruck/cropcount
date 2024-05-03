@@ -26,56 +26,56 @@ label_counts = defaultdict(int)
 wp = jp.WebPage(delete_flag=False)
 
 # TODO: logging and influx telemetry
-
-body_div = jp.Div( a=wp, style='background: url(bg.jpg) no-repeat center center fixed;' )
+body_div = jp.Img(src='/static/count_bg.jpg', a=wp)
+# body_div = jp.Div( a=wp, style='background: url(count_bg.jpg) no-repeat center center fixed;' )
 # Alternate ways: https://css-tricks.com/perfect-full-page-background-image/
 
 # Positions of rows and columns of divs
-t1 = "100px"
-t2 = "300px"
-t3 = "500px"
-l1 = "100px"
-l2 = "500px"
+t1 = "130px"
+t2 = "482px"
+t3 = "833px"
+l1 = "370px"
+l2 = "1290px"
 
-common_styles = "position: fixed; width: 200px; height: 100px; border: 3px solid #73AD21;"
-font = "font-family: 'Gill Sans Extrabold', sans-serif; font-size:2vw;"
+common_styles = "position: fixed; width: 520px; height: 170px;" # border: 3px solid #73AD21;"
+font = "font-family: 'Gotham Black', 'Arial Black', sans-serif; font-size:110pt; text-align: center; line-height:100%;" # 2vw;"
 # TODO: calculate div's percerntage of viewport width based on pixels
 
 beet_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'{common_styles} top: {t1}; left: {l1};  {font}',
+        style=f'{common_styles} top: {t1}; left: {l1};  {font} color:#6b2134;',
 )
 squash_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'top: {t1}; left: {l2}; {common_styles} {font}',
+        style=f'top: {t1}; left: {l2}; {common_styles} {font} color:#a47631;',
 )
 corn_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'top: {t2}; left: {l1}; {common_styles} {font}',
+        style=f'top: {t2}; left: {l1}; {common_styles} {font} color:#b07d26;',
 )
 sweet_potato_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'top: {t2}; left: {l2}; {common_styles} {font}',
+        style=f'top: {t2}; left: {l2}; {common_styles} {font} color:#9a5122;',
 )
 soybean_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'top: {t3}; left: {l1}; {common_styles} {font}',
+        style=f'top: {t3}; left: {l1}; {common_styles} {font} color:#477e38;',
 )
 total_div = jp.Span(
         text='Loading...',
         classes='',
         a=wp,
-        style=f'top: {t3}; left: {l2}; {common_styles} {font}',
+        style=f'top: {t3}; left: 1330px; {common_styles} {font} color:#1f5f99;',
 )
 
 
@@ -85,12 +85,12 @@ async def clock_counter():
 #            d = jp.Div(a=wp, classes='m-2')
 #            for j in range(2):
 #                jp.Span(text=f'Span #{j+1} in Div #{i+1}', a=d, classes='text-white bg-blue-700 hover:bg-blue-200 ml-1 p-1')
-        beet_div.text = "Beets: " + str(label_counts["Beet"])
-        squash_div.text = "Squash: " + str(label_counts["Squash"])
-        corn_div.text = "Corn: " + str(label_counts["Corn"])
-        sweet_potato_div.text = "Sweet Potatoes: " + str(label_counts["Sweet Potato"])
-        soybean_div.text = "Soybeans: " + str(label_counts["Soybean"])
-        total_div.text = "Total Produce: " + str(label_counts["Total"])
+        beet_div.text = str(label_counts["Beet"])
+        squash_div.text = str(label_counts["Squash"])
+        corn_div.text = str(label_counts["Corn"])
+        sweet_potato_div.text = str(label_counts["Sweet Potato"])
+        soybean_div.text = str(label_counts["Soybean"])
+        total_div.text = str(label_counts["Total"])
         jp.run_task(wp.update())
         await asyncio.sleep(1)
 
@@ -229,14 +229,10 @@ with ImageImpulseRunner(modelfile) as runner:
                 cv2.putText(im2, f'{label_counts["Soybean"]} Soybeans', (15,740), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.putText(im2, f'{countsum} Total Identified Items', (15,780), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.imshow('edgeimpulse', cv2.cvtColor(im2, cv2.COLOR_RGB2BGR))
-                # len_bb = len(res["result"]["bounding_boxes"])
-                # if len_bb > 0:
-                    # print(f"Found {len_bb} boxes at {time.time()}")
-                    # print('Found %d bounding boxes (%d ms.)' % (len(res["result"]["bounding_boxes"]), res['timing']['dsp'] + res['timing']['classification']))
 
                 if cv2.waitKey(1) == ord('r'):
                     countsum = 0
-                    label_counts['Soybean'] = 0
+                    label_counts = defaultdict(int)
                 if cv2.waitKey(1) == ord('q'):
                     break
 
