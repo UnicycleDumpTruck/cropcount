@@ -1,5 +1,4 @@
 *.png
-*.eim
 venv/
 
 # Byte-compiled / optimized / DLL files
