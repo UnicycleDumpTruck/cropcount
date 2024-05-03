@@ -12,7 +12,7 @@ import justpy as jp
  
 # Define the top of the image and the number of columns
 TOP_Y = 20 # was 80 # was originially 100
-NUM_COLS = 20
+NUM_COLS = 10 # tried 20 to improve multi-soy
 # Define the factor of the width/height which determines the threshold
 # for detection of the object's movement between frames:
 DETECT_FACTOR = 5 # was 1.5
@@ -88,7 +88,7 @@ async def clock_counter():
         beet_div.text = "Beets: " + str(label_counts["Beet"])
         squash_div.text = "Squash: " + str(label_counts["Squash"])
         corn_div.text = "Corn: " + str(label_counts["Corn"])
-        sweet_potato_div.text = "Sweet Potatoes: " + str(label_counts["Sweet Potatoes"])
+        sweet_potato_div.text = "Sweet Potatoes: " + str(label_counts["Sweet Potato"])
         soybean_div.text = "Soybeans: " + str(label_counts["Soybean"])
         total_div.text = "Total Produce: " + str(label_counts["Total"])
         jp.run_task(wp.update())
@@ -107,7 +107,7 @@ print("HTML Server Started")
 
 #jp.justpy(clock_test, startup=clock_init)
 
-modelfile = '/home/exhibits/cropcounter/modelfile.eim'
+modelfile = '/home/exhibits/cropcount/modelfile.eim'
 # If you have multiple webcams, replace None with the camera port you desire, get_webcams() can help find this
 # camera_port = None
 camera_port = 0
@@ -210,6 +210,7 @@ with ImageImpulseRunner(modelfile) as runner:
                                 if blob[5] > 0.7: # if confident in classification
                                     count[col] += 1
                                     countsum += 1
+                                    label_counts['Total'] += 1
                                     label_counts[bb['label']] += 1
                                     print(f"{blob[4]} added to count =============================")
                                     print(label_counts)
@@ -224,7 +225,7 @@ with ImageImpulseRunner(modelfile) as runner:
 
             if (show_camera):
                 im2 = cv2.resize(img, dsize=(800,800))
-                cv2.putText(im2, f'{label_counts["Sweet Potatos"]} Sweet Potatoes', (15,700), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+                cv2.putText(im2, f'{label_counts["Sweet Potato"]} Sweet Potatoes', (15,700), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.putText(im2, f'{label_counts["Soybean"]} Soybeans', (15,740), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.putText(im2, f'{countsum} Total Identified Items', (15,780), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.imshow('edgeimpulse', cv2.cvtColor(im2, cv2.COLOR_RGB2BGR))
