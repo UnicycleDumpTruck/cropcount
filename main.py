@@ -38,7 +38,7 @@ l1 = "370px"
 l2 = "1290px"
 
 common_styles = "position: fixed; width: 520px; height: 170px;" # border: 3px solid #73AD21;"
-font = "font-family: 'Gotham Black', 'Arial Black', sans-serif; font-size:110pt; text-align: center; line-height:100%;" # 2vw;"
+font = "font-family: 'Gotham Black', 'Arial Black', sans-serif; font-size:110pt; text-align: center; line-height:120%;" # 2vw;"
 # TODO: calculate div's percerntage of viewport width based on pixels
 
 beet_div = jp.Span(
