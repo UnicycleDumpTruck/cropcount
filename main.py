@@ -9,13 +9,36 @@ import time
 import datetime
 from edge_impulse_linux.image import ImageImpulseRunner
 import justpy as jp
- 
+import telemetry
+
+variations = {
+        "VSquash": ("Squash", 1),
+        "Squash": ("Squash", 1),
+        "Corn": ("Corn", 1),
+        "Soybean": ("Soybean", 1),
+        "Pod": ("Soybean", 3),
+        "Beet": ("Beet", 1),
+        "Sweet Potato": ("Sweet Potato", 1),
+        }
+
 # Define the top of the image and the number of columns
-TOP_Y = 20 # was 80 # was originially 100
-NUM_COLS = 10 # tried 20 to improve multi-soy
+TOP_Y = 45 # was 20, but corn was too big # was 80 # was originially 100
+NUM_COLS = 5 # was 10, but reduced to 5 to improve big squash & corn # tried 20 to improve multi-soy
+species_detect_factors = {
+        "Soybean": 1.2,
+        "Pod":10,
+        "Corn":10,
+        "Beet":10,
+        "Squash":10,
+        "VSquash":10,
+        "Sweet Potato":10,
+        }
+
+
 # Define the factor of the width/height which determines the threshold
 # for detection of the object's movement between frames:
 DETECT_FACTOR = 5 # was 1.5
+REQUIRED_CONFIDENCE = 0.5
 
 # Initialize variables
 count = [0] * NUM_COLS
@@ -37,9 +60,8 @@ t3 = "833px"
 l1 = "370px"
 l2 = "1290px"
 
-common_styles = "position: fixed; width: 520px; height: 170px;" # border: 3px solid #73AD21;"
-font = "font-family: 'Gotham Black', 'Arial Black', sans-serif; font-size:110pt; text-align: center; line-height:120%;" # 2vw;"
-# TODO: calculate div's percerntage of viewport width based on pixels
+common_styles = "position: fixed; width: 520px; height: 170px;"
+font = "font-family: 'Gotham Black', 'Arial Black', sans-serif; font-size:110pt; text-align: center; line-height:120%;"
 
 beet_div = jp.Span(
         text='Loading...',
@@ -79,33 +101,27 @@ total_div = jp.Span(
 )
 
 
-async def clock_counter():
+async def stats_page_update():
     while True:
-#        for i in range(3):
-#            d = jp.Div(a=wp, classes='m-2')
-#            for j in range(2):
-#                jp.Span(text=f'Span #{j+1} in Div #{i+1}', a=d, classes='text-white bg-blue-700 hover:bg-blue-200 ml-1 p-1')
-        beet_div.text = str(label_counts["Beet"])
-        squash_div.text = str(label_counts["Squash"])
-        corn_div.text = str(label_counts["Corn"])
-        sweet_potato_div.text = str(label_counts["Sweet Potato"])
-        soybean_div.text = str(label_counts["Soybean"])
-        total_div.text = str(label_counts["Total"])
+        beet_div.text = f'{label_counts["Beet"]:,}'
+        squash_div.text = f'{label_counts["Squash"]:,}'
+        corn_div.text = f'{label_counts["Corn"]:,}'
+        sweet_potato_div.text = f'{label_counts["Sweet Potato"]:,}'
+        soybean_div.text = f'{label_counts["Soybean"]:,}'
+        total_div.text = f'{label_counts["Total"]:,}'
         jp.run_task(wp.update())
         await asyncio.sleep(1)
 
+async def stats_page_init():
+    jp.run_task(stats_page_update())
 
-async def clock_init():
-    jp.run_task(clock_counter())
-
-async def clock_test():
+async def stats_page_test():
     return wp
 
-html_server = threading.Thread(target=jp.justpy, args=(clock_test,), kwargs={"startup":clock_init, "host":"0.0.0.0",}, daemon=True)
+html_server = threading.Thread(target=jp.justpy, args=(stats_page_test,), kwargs={"startup":stats_page_init, "host":"0.0.0.0",}, daemon=True)
 html_server.start()
 print("HTML Server Started")
 
-#jp.justpy(clock_test, startup=clock_init)
 
 modelfile = '/home/exhibits/cropcount/modelfile.eim'
 # If you have multiple webcams, replace None with the camera port you desire, get_webcams() can help find this
@@ -147,7 +163,6 @@ signal.signal(signal.SIGINT, sigint_handler)
 
 
 print('MODEL: ' + modelfile)
-
 
 
 with ImageImpulseRunner(modelfile) as runner:
@@ -192,26 +207,28 @@ with ImageImpulseRunner(modelfile) as runner:
                 len_bb = len(res["result"]["bounding_boxes"])
                 if len_bb:
                     print(f'Found {len_bb} bounding boxes at {datetime.datetime.now()}')
-                    # print('Found %d bounding boxes (%d ms.)' % (len_bb, res['timing']['dsp'] + res['timing']['classification']))
                 for bb in res["result"]["bounding_boxes"]:
                     print('\t%s (%.2f): x=%d y=%d w=%d h=%d' % (bb['label'], bb['value'], bb['x'], bb['y'], bb['width'], bb['height']))
                     img = cv2.rectangle(img, (bb['x'], bb['y']), (bb['x'] + bb['width'], bb['y'] + bb['height']), (255, 0, 0), 1)
 
-                        # Check which column the blob is in
+                    # Check which column the blob is in
                     col = int(bb['x'] / COL_WIDTH)
                     # Check if blob is within DETECT_FACTOR*h of a blob detected in the previous frame and treat as the same object
                     for blob in previous_blobs[col]:
-                        within_x_of_prev = abs(bb['x'] - blob[0]) < DETECT_FACTOR * (bb['width'] + blob[2])
-                        within_y_of_prev = abs(bb['y'] - blob[1]) < DETECT_FACTOR * (bb['height'] + blob[3])
+                        #within_x_of_prev = abs(bb['x'] - blob[0]) < DETECT_FACTOR * (bb['width'] + blob[2])
+                        within_x_of_prev = abs(bb['x'] - blob[0]) < species_detect_factors[bb['label']] * (bb['width'] + blob[2])
+                        #within_y_of_prev = abs(bb['y'] - blob[1]) < DETECT_FACTOR * (bb['height'] + blob[3])
+                        within_y_of_prev = abs(bb['y'] - blob[1]) < species_detect_factors[bb['label']] * (bb['height'] + blob[3])
                         passed_y_threshold = blob[1] >= TOP_Y and bb['y'] < TOP_Y
                         print(f"Within x: {within_x_of_prev} /t Within y: {within_y_of_prev} /t Crossed YT: {passed_y_threshold}")
                         if within_x_of_prev and within_y_of_prev and passed_y_threshold:
                                 # Increment count for this column
-                                if blob[5] > 0.7: # if confident in classification
+                                if blob[5] > REQUIRED_CONFIDENCE:
                                     count[col] += 1
                                     countsum += 1
-                                    label_counts['Total'] += 1
-                                    label_counts[bb['label']] += 1
+                                    label_counts['Total'] += variations[bb['label'][1]]
+                                    label_counts[variations[bb['label']][0]] += variations[bb['label']][1]
+                                    telemetry.send_point_in_thread(bb['label'], bb['value'])
                                     print(f"{blob[4]} added to count =============================")
                                     print(label_counts)
                                 else:
@@ -225,9 +242,13 @@ with ImageImpulseRunner(modelfile) as runner:
 
             if (show_camera):
                 im2 = cv2.resize(img, dsize=(800,800))
-                cv2.putText(im2, f'{label_counts["Sweet Potato"]} Sweet Potatoes', (15,700), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+                cv2.putText(im2, f'{label_counts["Corn"]} Corn', (15,580), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+                cv2.putText(im2, f'{label_counts["Sweet Potato"]} Sweet Potatoes', (15,620), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+                cv2.putText(im2, f'{label_counts["Beet"]} Beets', (15,660), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+                cv2.putText(im2, f'{label_counts["Squash"]} Squash', (15,700), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.putText(im2, f'{label_counts["Soybean"]} Soybeans', (15,740), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.putText(im2, f'{countsum} Total Identified Items', (15,780), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
+
                 cv2.imshow('edgeimpulse', cv2.cvtColor(im2, cv2.COLOR_RGB2BGR))
 
                 if cv2.waitKey(1) == ord('r'):
