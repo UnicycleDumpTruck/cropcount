@@ -226,7 +226,7 @@ with ImageImpulseRunner(modelfile) as runner:
                                 if blob[5] > REQUIRED_CONFIDENCE:
                                     count[col] += 1
                                     countsum += 1
-                                    label_counts['Total'] += variations[bb['label'][1]]
+                                    label_counts['Total'] += variations[bb['label']][1]
                                     label_counts[variations[bb['label']][0]] += variations[bb['label']][1]
                                     telemetry.send_point_in_thread(bb['label'], bb['value'])
                                     print(f"{blob[4]} added to count =============================")
